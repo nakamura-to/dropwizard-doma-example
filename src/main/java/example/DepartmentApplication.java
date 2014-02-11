@@ -24,7 +24,7 @@ import org.seasar.doma.dropwizard.DomaBundle;
 import org.seasar.doma.dropwizard.DomaConfig;
 import org.seasar.doma.jdbc.Config;
 import org.seasar.doma.jdbc.builder.UpdateBuilder;
-import org.seasar.doma.jdbc.tx.LocalTransaction;
+import org.seasar.doma.jdbc.tx.LocalTransactionManager;
 
 /**
  * @author nakamura-to
@@ -48,8 +48,8 @@ public class DepartmentApplication extends Application<DepartmentConfiguration> 
     }
 
     @Override
-    public void run(DepartmentConfiguration configuration, Environment environment)
-            throws Exception {
+    public void run(DepartmentConfiguration configuration,
+            Environment environment) throws Exception {
         DomaConfig config = domaBundle.getConfig();
         initializeDatabase(config);
 
@@ -58,9 +58,8 @@ public class DepartmentApplication extends Application<DepartmentConfiguration> 
     }
 
     protected void initializeDatabase(DomaConfig config) {
-        LocalTransaction tx = config.getLocalTransaction();
-        tx.begin();
-        try {
+        LocalTransactionManager tx = config.getLocalTransactionManager();
+        tx.required(() -> {
             executeSql(
                     config,
                     "create table department (id integer not null primary key,name varchar(255) not null, version integer not null)");
@@ -68,10 +67,7 @@ public class DepartmentApplication extends Application<DepartmentConfiguration> 
                     "insert into department values(1,'ACCOUNTING',1)");
             executeSql(config, "insert into department values(2,'RESEARCH',1)");
             executeSql(config, "insert into department values(3,'SALES',1)");
-            tx.commit();
-        } finally {
-            tx.rollback();
-        }
+        });
     }
 
     protected void executeSql(Config config, String sql) {
